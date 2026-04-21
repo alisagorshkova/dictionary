@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vocabulary Flashcards</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #718096;
+      margin-bottom: 32px;
+      font-size: 0.95rem;
+    }
+
+    .progress {
+      color: #4a5568;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+
+    /* Card */
+    .scene {
+      width: 360px;
+      max-width: 100%;
+      height: 220px;
+      perspective: 1000px;
+      cursor: pointer;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s ease;
+      border-radius: 16px;
+    }
+
+    .card.flipped { transform: rotateY(180deg); }
+
+    .face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+
+    .front {
+      background: #fff;
+    }
+
+    .back {
+      background: #4c51bf;
+      color: #fff;
+      transform: rotateY(180deg);
+    }
+
+    .face .label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      margin-bottom: 12px;
+    }
+
+    .face .word {
+      font-size: 1.9rem;
+      font-weight: 700;
+      text-align: center;
+      color: #1a202c;
+    }
+
+    .back .word { color: #fff; font-size: 1.1rem; font-weight: 400; line-height: 1.6; }
+
+    .hint {
+      font-size: 0.8rem;
+      color: #a0aec0;
+      margin-top: 10px;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    button {
+      padding: 10px 28px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.35; cursor: default; }
+
+    .btn-prev { background: #e2e8f0; color: #4a5568; }
+    .btn-next { background: #4c51bf; color: #fff; }
+
+    .btn-shuffle {
+      background: #fff;
+      color: #4c51bf;
+      border: 2px solid #4c51bf;
+      padding: 8px 20px;
+      font-size: 0.85rem;
+    }
+
+    /* Word list */
+    .list-section { width: 360px; max-width: 100%; }
+
+    .list-section h2 {
+      font-size: 1rem;
+      color: #4a5568;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .word-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .word-item {
+      background: #fff;
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .word-item:hover { background: #ebf4ff; }
+    .word-item.active { background: #ebf4ff; border-left: 3px solid #4c51bf; }
+
+    .word-item .w { font-weight: 600; color: #1a202c; }
+    .word-item .d { font-size: 0.82rem; color: #718096; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+</head>
+<body>
+
+<h1>Vocabulary Flashcards</h1>
+<p class="subtitle">Click the card to reveal the definition</p>
+
+<p class="progress" id="progress"></p>
+
+<div class="scene" id="scene" onclick="flip()">
+  <div class="card" id="card">
+    <div class="face front">
+      <span class="label">Word</span>
+      <span class="word" id="front-word"></span>
+      <span class="hint">tap to flip</span>
+    </div>
+    <div class="face back">
+      <span class="label" style="color:rgba(255,255,255,0.6)">Definition</span>
+      <span class="word" id="back-def"></span>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn-prev" id="prev-btn" onclick="prev()">← Prev</button>
+  <button class="btn-shuffle" onclick="shuffle()">⇄ Shuffle</button>
+  <button class="btn-next" id="next-btn" onclick="next()">Next →</button>
+</div>
+
+<div class="list-section">
+  <h2>All words</h2>
+  <div class="word-list" id="word-list"></div>
+</div>
+
+<script>
+  const WORDS = [
+    { word: "Aberrant",     def: "Departing from an accepted standard; unusual or unexpected." },
+    { word: "Benevolent",   def: "Well-meaning and kindly; showing goodwill." },
+    { word: "Candid",       def: "Truthful and straightforward; frank." },
+    { word: "Diligent",     def: "Having or showing care and conscientiousness in one's work." },
+    { word: "Ephemeral",    def: "Lasting for a very short time." },
+    { word: "Fervent",      def: "Having or displaying a passionate intensity." },
+    { word: "Garrulous",    def: "Excessively talkative, especially on trivial matters." },
+    { word: "Haphazard",    def: "Lacking any obvious principle of organization; random." },
+    { word: "Implicit",     def: "Suggested though not directly expressed; understood." },
+    { word: "Jubilant",     def: "Feeling or expressing great happiness and triumph." },
+    { word: "Kindle",       def: "To light or set on fire; to arouse or inspire a feeling." },
+    { word: "Lament",       def: "To mourn a loss or express sorrow or regret." },
+    { word: "Meticulous",   def: "Showing great attention to detail; very careful and precise." },
+    { word: "Nonchalant",   def: "Feeling or appearing casually calm and relaxed." },
+    { word: "Ostentatious", def: "Characterized by vulgar or pretentious display; designed to impress." },
+    { word: "Pragmatic",    def: "Dealing with things sensibly and realistically." },
+    { word: "Quandary",     def: "A state of perplexity or uncertainty over what to do." },
+    { word: "Resilient",    def: "Able to withstand or recover quickly from difficult conditions." },
+    { word: "Stoic",        def: "Enduring pain or hardship without showing feelings or complaining." },
+    { word: "Tenacious",    def: "Tending to keep a firm hold; persistent." },
+  ];
+
+  let deck = [...WORDS];
+  let idx = 0;
+  let isFlipped = false;
+
+  function render() {
+    const entry = deck[idx];
+    document.getElementById('front-word').textContent = entry.word;
+    document.getElementById('back-def').textContent = entry.def;
+    document.getElementById('progress').textContent = `${idx + 1} / ${deck.length}`;
+    document.getElementById('prev-btn').disabled = idx === 0;
+    document.getElementById('next-btn').disabled = idx === deck.length - 1;
+    // reset flip
+    isFlipped = false;
+    document.getElementById('card').classList.remove('flipped');
+    // highlight list
+    document.querySelectorAll('.word-item').forEach((el, i) => {
+      el.classList.toggle('active', deck[i] === entry);
+    });
+  }
+
+  function flip() {
+    isFlipped = !isFlipped;
+    document.getElementById('card').classList.toggle('flipped', isFlipped);
+  }
+
+  function next() { if (idx < deck.length - 1) { idx++; render(); } }
+  function prev() { if (idx > 0) { idx--; render(); } }
+
+  function shuffle() {
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    idx = 0;
+    render();
+  }
+
+  function buildList() {
+    const list = document.getElementById('word-list');
+    deck.forEach((entry, i) => {
+      const el = document.createElement('div');
+      el.className = 'word-item';
+      el.innerHTML = `<span class="w">${entry.word}</span><span class="d">${entry.def}</span>`;
+      el.onclick = () => { idx = i; render(); window.scrollTo({top:0, behavior:'smooth'}); };
+      list.appendChild(el);
+    });
+  }
+
+  buildList();
+  render();
+
+  // Keyboard navigation
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') next();
+    else if (e.key === 'ArrowLeft') prev();
+    else if (e.key === ' ') { e.preventDefault(); flip(); }
+  });
+</script>
+</body>
+</html>
