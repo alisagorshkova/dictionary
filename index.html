@@ -1,285 +1,716 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vocabulary Flashcards</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Vocabulary</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F2EC;
+    --surface: #FFFDF8;
+    --text: #1A1A18;
+    --muted: #8A8880;
+    --accent: #2D5A3D;
+    --accent-light: #E8F0EA;
+    --danger: #8B2E2E;
+    --danger-light: #F5EAEA;
+    --border: #E2DDD4;
+    --card-shadow: 0 8px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+  }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #f0f4f8;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 24px 16px;
-    }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    h1 {
-      font-size: 1.8rem;
-      color: #1a202c;
-      margin-bottom: 8px;
-    }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    color: var(--text);
+  }
 
-    .subtitle {
-      color: #718096;
-      margin-bottom: 32px;
-      font-size: 0.95rem;
-    }
+  /* ── SCREENS ── */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
 
-    .progress {
-      color: #4a5568;
-      font-size: 0.9rem;
-      margin-bottom: 16px;
-    }
+  /* ── UPLOAD SCREEN ── */
+  #upload-screen {
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
 
-    /* Card */
-    .scene {
-      width: 360px;
-      max-width: 100%;
-      height: 220px;
-      perspective: 1000px;
-      cursor: pointer;
-      margin-bottom: 28px;
-    }
+  .upload-wrap {
+    width: 100%;
+    max-width: 560px;
+  }
 
-    .card {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      transform-style: preserve-3d;
-      transition: transform 0.5s ease;
-      border-radius: 16px;
-    }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+  }
 
-    .card.flipped { transform: rotateY(180deg); }
+  .logo span { color: var(--accent); font-style: italic; }
 
-    .face {
-      position: absolute;
-      inset: 0;
-      backface-visibility: hidden;
-      border-radius: 16px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 28px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-    }
+  .tagline {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 2.5rem;
+    font-weight: 300;
+  }
 
-    .front {
-      background: #fff;
-    }
+  .field-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
 
-    .back {
-      background: #4c51bf;
-      color: #fff;
-      transform: rotateY(180deg);
-    }
+  .format-hint {
+    background: var(--accent-light);
+    border: 1px solid #C5D9C9;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
 
-    .face .label {
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      opacity: 0.5;
-      margin-bottom: 12px;
-    }
+  .format-hint strong { font-weight: 500; }
 
-    .face .word {
-      font-size: 1.9rem;
-      font-weight: 700;
-      text-align: center;
-      color: #1a202c;
-    }
+  textarea {
+    width: 100%;
+    height: 220px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    resize: none;
+    outline: none;
+    line-height: 1.7;
+    transition: border-color 0.2s;
+  }
 
-    .back .word { color: #fff; font-size: 1.1rem; font-weight: 400; line-height: 1.6; }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); }
 
-    .hint {
-      font-size: 0.8rem;
-      color: #a0aec0;
-      margin-top: 10px;
-    }
+  .source-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
 
-    /* Controls */
-    .controls {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 32px;
-    }
+  .source-input:focus { border-color: var(--accent); }
+  .source-input::placeholder { color: var(--muted); }
 
-    button {
-      padding: 10px 28px;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
-    }
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
 
-    button:active { transform: scale(0.97); }
-    button:disabled { opacity: 0.35; cursor: default; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:active { transform: scale(0.99); }
 
-    .btn-prev { background: #e2e8f0; color: #4a5568; }
-    .btn-next { background: #4c51bf; color: #fff; }
+  .error-msg {
+    font-size: 13px;
+    color: var(--danger);
+    margin-top: 10px;
+    display: none;
+  }
 
-    .btn-shuffle {
-      background: #fff;
-      color: #4c51bf;
-      border: 2px solid #4c51bf;
-      padding: 8px 20px;
-      font-size: 0.85rem;
-    }
+  /* ── STUDY SCREEN ── */
+  #study-screen {
+    padding: 0;
+  }
 
-    /* Word list */
-    .list-section { width: 360px; max-width: 100%; }
+  .study-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
 
-    .list-section h2 {
-      font-size: 1rem;
-      color: #4a5568;
-      margin-bottom: 12px;
-      font-weight: 600;
-    }
+  .back-btn {
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+  }
 
-    .word-list {
-      display: grid;
-      gap: 8px;
-    }
+  .back-btn:hover { color: var(--text); }
 
-    .word-item {
-      background: #fff;
-      border-radius: 10px;
-      padding: 12px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-      cursor: pointer;
-      transition: background 0.15s;
-    }
+  .progress-info {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
 
-    .word-item:hover { background: #ebf4ff; }
-    .word-item.active { background: #ebf4ff; border-left: 3px solid #4c51bf; }
+  .progress-info strong { color: var(--text); }
 
-    .word-item .w { font-weight: 600; color: #1a202c; }
-    .word-item .d { font-size: 0.82rem; color: #718096; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  </style>
+  .source-tag {
+    font-size: 11px;
+    background: var(--accent-light);
+    color: var(--accent);
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-weight: 500;
+  }
+
+  .progress-bar-wrap {
+    height: 3px;
+    background: var(--border);
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.4s ease;
+  }
+
+  .study-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    gap: 2rem;
+  }
+
+  /* ── CARD ── */
+  .card-stage {
+    width: 100%;
+    max-width: 400px;
+    position: relative;
+    height: 260px;
+    perspective: 1000px;
+  }
+
+  .flashcard {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.5s ease, left 0.35s ease, opacity 0.35s ease, rotate 0.35s ease;
+    border-radius: 16px;
+  }
+
+  .flashcard.flipped { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    text-align: center;
+  }
+
+  .card-back {
+    transform: rotateY(180deg);
+  }
+
+  .card-hint {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    font-weight: 500;
+  }
+
+  .card-word {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    color: var(--text);
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+  }
+
+  .card-translation {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    color: var(--accent);
+    line-height: 1.3;
+  }
+
+  .card-pos {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  /* swipe hint overlay */
+  .swipe-hint-left, .swipe-hint-right {
+    position: absolute;
+    top: 16px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 99px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .swipe-hint-left { left: 16px; background: var(--danger-light); color: var(--danger); }
+  .swipe-hint-right { right: 16px; background: var(--accent-light); color: var(--accent); }
+
+  /* ── BUTTONS ── */
+  .action-row {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .btn-action {
+    flex: 1;
+    padding: 14px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-action:active { transform: scale(0.97); }
+
+  .btn-forgot {
+    background: var(--danger-light);
+    color: var(--danger);
+    border: 1px solid #DEC4C4;
+  }
+
+  .btn-knew {
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid #C5D9C9;
+  }
+
+  .btn-forgot:hover { background: #EDD8D8; }
+  .btn-knew:hover { background: #DAE9DC; }
+
+  .flip-hint {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* ── DONE SCREEN ── */
+  #done-screen {
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .done-wrap { max-width: 400px; width: 100%; }
+
+  .done-icon {
+    font-family: 'Playfair Display', serif;
+    font-size: 56px;
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+
+  .done-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    margin-bottom: 0.5rem;
+  }
+
+  .done-sub {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 600;
+  }
+
+  .stat-num.green { color: var(--accent); }
+  .stat-num.red { color: var(--danger); }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: background 0.15s;
+  }
+
+  .btn-secondary:hover { background: var(--border); }
+
+  /* ── DRAG STATE ── */
+  .flashcard.dragging {
+    transition: none;
+    cursor: grabbing;
+  }
+</style>
 </head>
 <body>
 
-<h1>Vocabulary Flashcards</h1>
-<p class="subtitle">Click the card to reveal the definition</p>
+<!-- UPLOAD SCREEN -->
+<div id="upload-screen" class="screen active">
+  <div class="upload-wrap">
+    <div class="logo">My <span>Vocabulary</span></div>
+    <div class="tagline">Слова из твоих текстов — в долгосрочную память</div>
 
-<p class="progress" id="progress"></p>
+    <div class="field-label">Источник (необязательно)</div>
+    <input type="text" id="source-name" class="source-input" placeholder="Например: «Sapiens», глава 3">
 
-<div class="scene" id="scene" onclick="flip()">
-  <div class="card" id="card">
-    <div class="face front">
-      <span class="label">Word</span>
-      <span class="word" id="front-word"></span>
-      <span class="hint">tap to flip</span>
+    <div class="field-label">Текст с переводом</div>
+    <div class="format-hint">
+      Вставь пары слово — перевод. Форматы: <br>
+      <strong>слово → перевод</strong> &nbsp;·&nbsp; <strong>слово — перевод</strong> &nbsp;·&nbsp; <strong>word: translation</strong> &nbsp;·&nbsp; <strong>word = translation</strong><br>
+      Каждая пара на новой строке. Можно смешивать форматы.
     </div>
-    <div class="face back">
-      <span class="label" style="color:rgba(255,255,255,0.6)">Definition</span>
-      <span class="word" id="back-def"></span>
+    <textarea id="vocab-input" placeholder="ubiquitous → вездесущий&#10;ephemeral — мимолётный&#10;resilience: стойкость&#10;threshold = порог"></textarea>
+    <div id="error-msg" class="error-msg">Не удалось распознать ни одной пары. Проверь формат.</div>
+
+    <br><br>
+    <button class="btn-primary" id="btn-start">Начать учить →</button>
+  </div>
+</div>
+
+<!-- STUDY SCREEN -->
+<div id="study-screen" class="screen">
+  <div class="study-header">
+    <button class="back-btn" id="btn-back-1">← Новый текст</button>
+    <div class="progress-info">
+      <strong id="current-num">1</strong> / <span id="total-num">0</span>
+    </div>
+    <div id="source-display" class="source-tag" style="display:none;"></div>
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+  </div>
+
+  <div class="study-body">
+    <div class="card-stage" id="card-stage">
+      <div class="swipe-hint-left" id="hint-left">Не помню</div>
+      <div class="swipe-hint-right" id="hint-right">Знаю!</div>
+      <div class="flashcard" id="flashcard" >
+        <div class="card-face card-front">
+          <div class="card-hint">слово</div>
+          <div class="card-word" id="card-word">—</div>
+        </div>
+        <div class="card-face card-back">
+          <div class="card-hint">перевод</div>
+          <div class="card-translation" id="card-translation">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flip-hint">Нажми на карточку, чтобы увидеть перевод</div>
+
+    <div class="action-row">
+      <button class="btn-action btn-forgot" id="btn-forgot">← Не помню</button>
+      <button class="btn-action btn-knew" id="btn-knew">Знаю →</button>
     </div>
   </div>
 </div>
 
-<div class="controls">
-  <button class="btn-prev" id="prev-btn" onclick="prev()">← Prev</button>
-  <button class="btn-shuffle" onclick="shuffle()">⇄ Shuffle</button>
-  <button class="btn-next" id="next-btn" onclick="next()">Next →</button>
-</div>
+<!-- DONE SCREEN -->
+<div id="done-screen" class="screen">
+  <div class="done-wrap">
+    <div class="done-icon">✦</div>
+    <div class="done-title">Сессия завершена</div>
+    <div class="done-sub" id="done-sub">Хорошая работа! Продолжай в том же духе.</div>
 
-<div class="list-section">
-  <h2>All words</h2>
-  <div class="word-list" id="word-list"></div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num green" id="stat-knew">0</div>
+        <div class="stat-label">Знаю</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num red" id="stat-forgot">0</div>
+        <div class="stat-label">Учить дальше</div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="retry-btn" style="margin-bottom:10px; display:none;">Повторить незнакомые →</button>
+    <button class="btn-secondary" id="btn-back-2">Загрузить новый текст</button>
+  </div>
 </div>
 
 <script>
-  const WORDS = [
-    { word: "Aberrant",     def: "Departing from an accepted standard; unusual or unexpected." },
-    { word: "Benevolent",   def: "Well-meaning and kindly; showing goodwill." },
-    { word: "Candid",       def: "Truthful and straightforward; frank." },
-    { word: "Diligent",     def: "Having or showing care and conscientiousness in one's work." },
-    { word: "Ephemeral",    def: "Lasting for a very short time." },
-    { word: "Fervent",      def: "Having or displaying a passionate intensity." },
-    { word: "Garrulous",    def: "Excessively talkative, especially on trivial matters." },
-    { word: "Haphazard",    def: "Lacking any obvious principle of organization; random." },
-    { word: "Implicit",     def: "Suggested though not directly expressed; understood." },
-    { word: "Jubilant",     def: "Feeling or expressing great happiness and triumph." },
-    { word: "Kindle",       def: "To light or set on fire; to arouse or inspire a feeling." },
-    { word: "Lament",       def: "To mourn a loss or express sorrow or regret." },
-    { word: "Meticulous",   def: "Showing great attention to detail; very careful and precise." },
-    { word: "Nonchalant",   def: "Feeling or appearing casually calm and relaxed." },
-    { word: "Ostentatious", def: "Characterized by vulgar or pretentious display; designed to impress." },
-    { word: "Pragmatic",    def: "Dealing with things sensibly and realistically." },
-    { word: "Quandary",     def: "A state of perplexity or uncertainty over what to do." },
-    { word: "Resilient",    def: "Able to withstand or recover quickly from difficult conditions." },
-    { word: "Stoic",        def: "Enduring pain or hardship without showing feelings or complaining." },
-    { word: "Tenacious",    def: "Tending to keep a firm hold; persistent." },
-  ];
+  var cards = [];
+  var currentIndex = 0;
+  var knewCount = 0;
+  var forgotCount = 0;
+  var forgottenCards = [];
+  var isFlipped = false;
+  var isDragging = false;
+  var startX = 0;
+  var currentX = 0;
 
-  let deck = [...WORDS];
-  let idx = 0;
-  let isFlipped = false;
-
-  function render() {
-    const entry = deck[idx];
-    document.getElementById('front-word').textContent = entry.word;
-    document.getElementById('back-def').textContent = entry.def;
-    document.getElementById('progress').textContent = `${idx + 1} / ${deck.length}`;
-    document.getElementById('prev-btn').disabled = idx === 0;
-    document.getElementById('next-btn').disabled = idx === deck.length - 1;
-    // reset flip
-    isFlipped = false;
-    document.getElementById('card').classList.remove('flipped');
-    // highlight list
-    document.querySelectorAll('.word-item').forEach((el, i) => {
-      el.classList.toggle('active', deck[i] === entry);
-    });
-  }
-
-  function flip() {
-    isFlipped = !isFlipped;
-    document.getElementById('card').classList.toggle('flipped', isFlipped);
-  }
-
-  function next() { if (idx < deck.length - 1) { idx++; render(); } }
-  function prev() { if (idx > 0) { idx--; render(); } }
-
-  function shuffle() {
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
+  function parseVocab(text) {
+    var lines = text.split('\n');
+    var pairs = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) continue;
+      var match = line.match(/^(.+?)\s*(?:\u2014|\u2013|\u2192|->|--|-|:|=)\s*(.+)$/);
+      if (match) {
+        var word = match[1].trim();
+        var translation = match[2].trim();
+        if (word && translation) pairs.push({ word: word, translation: translation });
+      }
     }
-    idx = 0;
-    render();
+    return pairs;
   }
 
-  function buildList() {
-    const list = document.getElementById('word-list');
-    deck.forEach((entry, i) => {
-      const el = document.createElement('div');
-      el.className = 'word-item';
-      el.innerHTML = `<span class="w">${entry.word}</span><span class="d">${entry.def}</span>`;
-      el.onclick = () => { idx = i; render(); window.scrollTo({top:0, behavior:'smooth'}); };
-      list.appendChild(el);
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  function showScreen(id) {
+    var screens = document.querySelectorAll('.screen');
+    for (var i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showCard() {
+    if (currentIndex >= cards.length) { showDone(); return; }
+    var card = cards[currentIndex];
+    document.getElementById('card-word').textContent = card.word;
+    document.getElementById('card-translation').textContent = card.translation;
+    document.getElementById('current-num').textContent = currentIndex + 1;
+    var pct = (currentIndex / cards.length) * 100;
+    document.getElementById('progress-bar').style.width = pct + '%';
+    isFlipped = false;
+    var fc = document.getElementById('flashcard');
+    fc.classList.remove('flipped');
+    fc.style.transition = '';
+    fc.style.transform = '';
+    fc.style.opacity = '1';
+    document.getElementById('hint-left').style.opacity = '0';
+    document.getElementById('hint-right').style.opacity = '0';
+  }
+
+  function flipCard() {
+    if (isDragging) return;
+    isFlipped = !isFlipped;
+    document.getElementById('flashcard').classList.toggle('flipped', isFlipped);
+  }
+
+  function animateSwipe(direction, callback) {
+    var fc = document.getElementById('flashcard');
+    var x = direction === 'right' ? 500 : -500;
+    var rot = direction === 'right' ? 12 : -12;
+    fc.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
+    fc.style.transform = 'translateX(' + x + 'px) rotate(' + rot + 'deg)';
+    fc.style.opacity = '0';
+    setTimeout(callback, 350);
+  }
+
+  function swipeRight() {
+    knewCount++;
+    animateSwipe('right', function(){ currentIndex++; showCard(); });
+  }
+
+  function swipeLeft() {
+    forgotCount++;
+    forgottenCards.push(cards[currentIndex]);
+    animateSwipe('left', function(){ currentIndex++; showCard(); });
+  }
+
+  function showDone() {
+    document.getElementById('stat-knew').textContent = knewCount;
+    document.getElementById('stat-forgot').textContent = forgotCount;
+    var pct = Math.round((knewCount / cards.length) * 100);
+    var msg = '';
+    if (pct === 100) msg = 'Идеально! Все слова знакомы.';
+    else if (pct >= 70) msg = pct + '% слов — уже твои. Осталось немного!';
+    else if (pct >= 40) msg = 'Хорошее начало. ' + forgotCount + ' слов ждут повторения.';
+    else msg = forgotCount + ' слов незнакомы — повтори их ещё раз.';
+    document.getElementById('done-sub').textContent = msg;
+    document.getElementById('retry-btn').style.display = forgottenCards.length ? 'block' : 'none';
+    document.getElementById('progress-bar').style.width = '100%';
+    showScreen('done-screen');
+  }
+
+  var dragSetup = false;
+
+  function setupDrag() {
+    if (dragSetup) return;
+    dragSetup = true;
+    var fc = document.getElementById('flashcard');
+    fc.addEventListener('mousedown', dragStart);
+    fc.addEventListener('touchstart', dragStart, { passive: true });
+    document.addEventListener('mousemove', dragMove);
+    document.addEventListener('touchmove', dragMove, { passive: true });
+    document.addEventListener('mouseup', dragEnd);
+    document.addEventListener('touchend', dragEnd);
+  }
+
+  var isPointerDown = false;
+
+  function dragStart(e) {
+    isPointerDown = true;
+    isDragging = false;
+    startX = e.touches ? e.touches[0].clientX : e.clientX;
+    currentX = startX;
+  }
+
+  function dragMove(e) {
+    if (!isPointerDown) return;
+    var x = e.touches ? e.touches[0].clientX : e.clientX;
+    var diff = x - startX;
+    if (Math.abs(diff) > 5) isDragging = true;
+    if (!isDragging) return;
+    currentX = x;
+    var fc = document.getElementById('flashcard');
+    var rotate = diff * 0.08;
+    fc.style.transition = 'none';
+    if (isFlipped) {
+      fc.style.transform = 'translateX(' + diff + 'px) rotateY(180deg) rotate(' + (-rotate) + 'deg)';
+    } else {
+      fc.style.transform = 'translateX(' + diff + 'px) rotate(' + rotate + 'deg)';
+    }
+    document.getElementById('hint-left').style.opacity = diff < -60 ? '1' : '0';
+    document.getElementById('hint-right').style.opacity = diff > 60 ? '1' : '0';
+  }
+
+  function dragEnd() {
+    if (!isPointerDown) return;
+    isPointerDown = false;
+    var diff = currentX - startX;
+    if (isDragging && Math.abs(diff) > 80) {
+      if (diff > 0) swipeRight();
+      else swipeLeft();
+    } else {
+      var fc = document.getElementById('flashcard');
+      fc.style.transition = 'transform 0.3s ease';
+      fc.style.transform = isFlipped ? 'rotateY(180deg)' : '';
+      document.getElementById('hint-left').style.opacity = '0';
+      document.getElementById('hint-right').style.opacity = '0';
+    }
+    isDragging = false;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('btn-start').addEventListener('click', function() {
+      var text = document.getElementById('vocab-input').value;
+      var parsed = parseVocab(text);
+      if (!parsed.length) {
+        document.getElementById('error-msg').style.display = 'block';
+        return;
+      }
+      document.getElementById('error-msg').style.display = 'none';
+      cards = shuffle(parsed);
+      currentIndex = 0; knewCount = 0; forgotCount = 0; forgottenCards = [];
+      var source = document.getElementById('source-name').value.trim();
+      var sd = document.getElementById('source-display');
+      if (source) { sd.textContent = source; sd.style.display = 'block'; }
+      else { sd.style.display = 'none'; }
+      document.getElementById('total-num').textContent = cards.length;
+      showScreen('study-screen');
+      showCard();
+      setupDrag();
     });
-  }
 
-  buildList();
-  render();
-
-  // Keyboard navigation
-  document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowRight') next();
-    else if (e.key === 'ArrowLeft') prev();
-    else if (e.key === ' ') { e.preventDefault(); flip(); }
+    document.getElementById('flashcard').addEventListener('click', flipCard);
+    document.getElementById('btn-forgot').addEventListener('click', swipeLeft);
+    document.getElementById('btn-knew').addEventListener('click', swipeRight);
+    document.getElementById('btn-back-1').addEventListener('click', function(){ showScreen('upload-screen'); });
+    document.getElementById('btn-back-2').addEventListener('click', function(){ showScreen('upload-screen'); });
+    document.getElementById('retry-btn').addEventListener('click', function() {
+      cards = shuffle(forgottenCards.slice());
+      currentIndex = 0; knewCount = 0; forgotCount = 0; forgottenCards = [];
+      document.getElementById('total-num').textContent = cards.length;
+      showScreen('study-screen');
+      showCard();
+    });
   });
 </script>
 </body>
