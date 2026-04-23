@@ -776,6 +776,69 @@
     flex-shrink: 0;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── MODE TOGGLE ── */
+  .mode-toggle {
+    display: flex;
+    gap: 3px;
+    background: var(--border);
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 20px;
+  }
+  .mode-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mode-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 500;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+
+  /* ── LANG SELECTOR ── */
+  .lang-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .lang-col { flex: 1; }
+  .lang-arrow-label {
+    font-size: 18px;
+    color: var(--muted);
+    padding-bottom: 10px;
+    flex-shrink: 0;
+  }
+  .lang-select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 32px 10px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238A8880' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: border-color 0.2s;
+  }
+  .lang-select:focus { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -808,12 +871,67 @@
     <div class="field-label">Источник (необязательно)</div>
     <input type="text" id="source-name" class="source-input" placeholder="Например: «Sapiens», глава 3">
 
-    <div class="field-label">Текст с переводом</div>
-    <div class="format-hint">
-      Вставь пары слово — перевод. Форматы: <br>
-      <strong>слово → перевод</strong> &nbsp;·&nbsp; <strong>слово — перевод</strong> &nbsp;·&nbsp; <strong>word: translation</strong> &nbsp;·&nbsp; <strong>word = translation</strong><br>
-      Каждая пара на новой строке. Можно смешивать форматы.
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="mode-manual">С переводом</button>
+      <button class="mode-btn" id="mode-auto">Автоперевод</button>
     </div>
+
+    <div id="lang-selector" style="display:none;">
+      <div class="lang-row">
+        <div class="lang-col">
+          <div class="field-label">Язык слов</div>
+          <select id="lang-from" class="lang-select">
+            <option value="en">Английский</option>
+            <option value="de">Немецкий</option>
+            <option value="fr">Французский</option>
+            <option value="es">Испанский</option>
+            <option value="it">Итальянский</option>
+            <option value="pt">Португальский</option>
+            <option value="tr">Турецкий</option>
+            <option value="zh">Китайский</option>
+            <option value="ja">Японский</option>
+            <option value="ko">Корейский</option>
+            <option value="ru">Русский</option>
+            <option value="ar">Арабский</option>
+          </select>
+        </div>
+        <div class="lang-arrow-label">→</div>
+        <div class="lang-col">
+          <div class="field-label">Перевод на</div>
+          <select id="lang-to" class="lang-select">
+            <option value="ru">Русский</option>
+            <option value="en">Английский</option>
+            <option value="de">Немецкий</option>
+            <option value="fr">Французский</option>
+            <option value="es">Испанский</option>
+            <option value="it">Итальянский</option>
+            <option value="pt">Португальский</option>
+            <option value="tr">Турецкий</option>
+            <option value="zh">Китайский</option>
+            <option value="ja">Японский</option>
+            <option value="ko">Корейский</option>
+            <option value="ar">Арабский</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="manual-hint">
+      <div class="field-label">Текст с переводом</div>
+      <div class="format-hint">
+        Вставь пары слово — перевод. Форматы: <br>
+        <strong>слово → перевод</strong> &nbsp;·&nbsp; <strong>слово — перевод</strong> &nbsp;·&nbsp; <strong>word: translation</strong> &nbsp;·&nbsp; <strong>word = translation</strong><br>
+        Каждая пара на новой строке. Можно смешивать форматы.
+      </div>
+    </div>
+
+    <div id="auto-hint" style="display:none;">
+      <div class="field-label">Слова или фразы</div>
+      <div class="format-hint">
+        Введи слова или фразы — по одной на каждой строке. Система переведёт и добавит в твой словарь.
+      </div>
+    </div>
+
     <textarea id="vocab-input" placeholder="ubiquitous → вездесущий&#10;ephemeral — мимолётный&#10;resilience: стойкость&#10;threshold = порог"></textarea>
     <div id="error-msg" class="error-msg">Не удалось распознать ни одной пары. Проверь формат.</div>
 
@@ -1512,8 +1630,145 @@ function esc(s) {
   return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ─── AUTO-TRANSLATE MODE ──────────────────────────────────────────────────────
+var isAutoMode = false;
+
+function setMode(mode) {
+  isAutoMode = mode === 'auto';
+  document.getElementById('mode-manual').classList.toggle('active', !isAutoMode);
+  document.getElementById('mode-auto').classList.toggle('active', isAutoMode);
+  document.getElementById('lang-selector').style.display = isAutoMode ? 'block' : 'none';
+  document.getElementById('manual-hint').style.display = isAutoMode ? 'none' : 'block';
+  document.getElementById('auto-hint').style.display = isAutoMode ? 'block' : 'none';
+  var errEl = document.getElementById('error-msg');
+  errEl.style.display = 'none';
+  errEl.textContent = isAutoMode ? 'Введи хотя бы одно слово или фразу.' : 'Не удалось распознать ни одной пары. Проверь формат.';
+  document.getElementById('dedup-callout').style.display = 'none';
+  var ta = document.getElementById('vocab-input');
+  var btn = document.getElementById('btn-start');
+  if (isAutoMode) {
+    ta.placeholder = 'ubiquitous\nephemeral\nresilience\nthreshold';
+    btn.textContent = 'Перевести и учить →';
+  } else {
+    ta.placeholder = 'ubiquitous → вездесущий\nephemeral — мимолётный\nresilience: стойкость\nthreshold = порог';
+    btn.textContent = 'Начать учить →';
+  }
+}
+
+async function translateWord(word, from, to) {
+  var url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(word) + '&langpair=' + from + '|' + to;
+  try {
+    var resp = await fetch(url);
+    var data = await resp.json();
+    if (data.responseStatus === 200 && data.responseData && data.responseData.translatedText) {
+      var t = data.responseData.translatedText.trim();
+      if (t && t.toLowerCase() !== word.toLowerCase()) return t;
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function startAutoSession() {
+  var text = document.getElementById('vocab-input').value.trim();
+  var words = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+  if (!words.length) {
+    document.getElementById('error-msg').style.display = 'block';
+    return;
+  }
+  document.getElementById('error-msg').style.display = 'none';
+  var btn = document.getElementById('btn-start');
+  btn.disabled = true;
+
+  var from = document.getElementById('lang-from').value;
+  var to = document.getElementById('lang-to').value;
+  var pairs = [];
+  var failed = [];
+
+  for (var i = 0; i < words.length; i++) {
+    btn.textContent = 'Переводим ' + (i + 1) + ' / ' + words.length + '…';
+    var translation = await translateWord(words[i], from, to);
+    if (translation) {
+      pairs.push({ word: words[i], translation: translation });
+    } else {
+      failed.push(words[i]);
+    }
+  }
+
+  if (!pairs.length) {
+    btn.disabled = false;
+    btn.textContent = 'Перевести и учить →';
+    var errEl = document.getElementById('error-msg');
+    errEl.textContent = 'Не удалось перевести слова. Проверь интернет-соединение или смени язык.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.textContent = 'Проверяем словарь…';
+  var learnedSet = await dbGetLearnedWords();
+  var newCards = [];
+  var repeatCards = [];
+  var skipped = 0;
+
+  pairs.forEach(function(p) {
+    var key = p.word.toLowerCase().trim();
+    if (learnedSet.indexOf(key) >= 0) {
+      skipped++;
+    } else {
+      var lsWords = lsGetWords();
+      var existing = lsWords.find(function(w) { return w.word.toLowerCase() === key; });
+      if (existing && existing.status === 'unknown') {
+        repeatCards.push(Object.assign({}, p, { isRepeat: true }));
+      } else {
+        newCards.push(p);
+      }
+    }
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Перевести и учить →';
+
+  var allSessionCards = newCards.concat(repeatCards);
+  var callout = document.getElementById('dedup-callout');
+
+  if (skipped > 0 && allSessionCards.length === 0) {
+    callout.className = 'dedup-callout all-learned';
+    callout.textContent = 'Все слова уже в твоём словаре.';
+    callout.style.display = 'block';
+    return;
+  } else if (failed.length > 0 || skipped > 0 || repeatCards.length > 0) {
+    callout.className = 'dedup-callout';
+    var msg = 'Слов: <span class="dedup-nums">' + words.length + '</span>. ';
+    if (failed.length > 0) msg += '<span class="dedup-nums">' + failed.length + '</span> не переведено. ';
+    if (skipped > 0) msg += '<span class="dedup-nums">' + skipped + '</span> уже выучены. ';
+    if (repeatCards.length > 0) msg += '<span class="dedup-nums">' + repeatCards.length + '</span> на повторе. ';
+    msg += 'Добавлено новых: <span class="dedup-nums">' + newCards.length + '</span>.';
+    callout.innerHTML = msg;
+    callout.style.display = 'block';
+  } else {
+    callout.style.display = 'none';
+  }
+
+  if (!allSessionCards.length) return;
+
+  await dbUpsertWords(allSessionCards.filter(function(c) { return !c.isRepeat; }), document.getElementById('source-name').value.trim());
+
+  cards = shuffle(allSessionCards);
+  currentIndex = 0; knewCount = 0; forgotCount = 0; forgottenCards = [];
+
+  var source = document.getElementById('source-name').value.trim();
+  var sd = document.getElementById('source-display');
+  if (source) { sd.textContent = source; sd.style.display = 'block'; }
+  else { sd.style.display = 'none'; }
+
+  document.getElementById('total-num').textContent = cards.length;
+  showScreen('study-screen');
+  showCard();
+  setupDrag();
+}
+
 // ─── START SESSION ────────────────────────────────────────────────────────────
 async function startSession() {
+  if (isAutoMode) { return startAutoSession(); }
   var text = document.getElementById('vocab-input').value;
   var parsed = parseVocab(text);
   if (!parsed.length) {
@@ -1597,6 +1852,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!isOnline) document.getElementById('offline-banner').classList.add('visible');
 
   document.getElementById('btn-start').addEventListener('click', startSession);
+  document.getElementById('mode-manual').addEventListener('click', function() { setMode('manual'); });
+  document.getElementById('mode-auto').addEventListener('click', function() { setMode('auto'); });
   document.getElementById('flashcard').addEventListener('click', flipCard);
   document.getElementById('btn-forgot').addEventListener('click', swipeLeft);
   document.getElementById('btn-knew').addEventListener('click', swipeRight);
