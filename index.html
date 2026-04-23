@@ -101,6 +101,73 @@
     50% { opacity: 0.4; }
   }
 
+  .btn-auth {
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    padding: 2px 0;
+    text-align: right;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .btn-auth:hover { color: var(--text); }
+  .btn-auth.signed-in { color: var(--accent); font-weight: 500; text-decoration: none; }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-card {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 28px 24px;
+    max-width: 360px;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal-close {
+    position: absolute;
+    top: 14px; right: 16px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 4px;
+    line-height: 1;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  .modal-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 20px;
+    line-height: 1.55;
+  }
+  .auth-status {
+    font-size: 13px;
+    color: var(--accent);
+    margin-top: 12px;
+    min-height: 20px;
+    text-align: center;
+  }
+
   .field-label {
     font-size: 11px;
     font-weight: 500;
@@ -716,6 +783,11 @@
 <div class="offline-banner" id="offline-banner">⚡ Офлайн-режим — слова сохраняются локально и синхронизируются при восстановлении</div>
 <div class="toast" id="toast"></div>
 
+<!-- AUTH MODAL -->
+<div id="auth-modal" class="modal-overlay">
+  <div class="modal-card"></div>
+</div>
+
 <!-- UPLOAD SCREEN -->
 <div id="upload-screen" class="screen active">
   <div class="upload-wrap">
@@ -724,10 +796,13 @@
         <div class="logo">My <span>Vocabulary</span></div>
         <div class="tagline">Слова из твоих текстов — в долгосрочную память</div>
       </div>
-      <button class="btn-my-vocab" id="btn-open-stats">
-        <span class="sync-dot" id="sync-dot"></span>
-        Мой словарь
-      </button>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+        <button class="btn-my-vocab" id="btn-open-stats">
+          <span class="sync-dot" id="sync-dot"></span>
+          Мой словарь
+        </button>
+        <button class="btn-auth" id="btn-auth">Войти</button>
+      </div>
     </div>
 
     <div class="field-label">Источник (необязательно)</div>
@@ -854,23 +929,146 @@ function initSupabase() {
   }
 }
 
+function hasMigrated(userId) {
+  try { var m = JSON.parse(localStorage.getItem('migrated_users') || '[]'); return m.indexOf(userId) >= 0; } catch(e) { return false; }
+}
+
+function markMigrated(userId) {
+  try {
+    var m = JSON.parse(localStorage.getItem('migrated_users') || '[]');
+    if (m.indexOf(userId) < 0) { m.push(userId); localStorage.setItem('migrated_users', JSON.stringify(m)); }
+  } catch(e) {}
+}
+
+async function migrateLocalWordsToCloud() {
+  if (!sb || !currentUser) return;
+  var local = lsGetWords();
+  if (!local.length) return;
+  var rows = local
+    .filter(function(w) { return w.word && w.translation; })
+    .map(function(w) {
+      return {
+        user_id: currentUser.id,
+        word: w.word.toLowerCase().trim(),
+        translation: w.translation,
+        status: w.status || 'new',
+        source: w.source || null,
+        created_at: w.created_at || new Date().toISOString(),
+        learned_at: w.learned_at || null
+      };
+    });
+  if (!rows.length) return;
+  try {
+    setSyncDot('syncing');
+    await sb.from('words').upsert(rows, { onConflict: 'user_id,word', ignoreDuplicates: true });
+    setSyncDot('online');
+  } catch(e) {
+    console.warn('Local word migration failed:', e);
+  }
+}
+
 async function initAuth() {
+  sb.auth.onAuthStateChange(async function(event, session) {
+    if (session) {
+      currentUser = session.user;
+      if (isOnline) setSyncDot('online');
+      if (session.user.email && !hasMigrated(session.user.id)) {
+        markMigrated(session.user.id);
+        await migrateLocalWordsToCloud();
+      }
+      syncOfflineQueue();
+    } else {
+      currentUser = null;
+    }
+    updateAuthUI();
+  });
   try {
     var { data: { session } } = await sb.auth.getSession();
     if (session) {
       currentUser = session.user;
+      updateAuthUI();
     } else {
-      var { data, error } = await sb.auth.signInAnonymously();
-      if (!error) {
-        currentUser = data.user;
-        localStorage.setItem('sb_user_id', currentUser.id);
-      }
+      await sb.auth.signInAnonymously();
     }
-    setSyncDot('online');
-    syncOfflineQueue();
+    if (isOnline) setSyncDot('online');
   } catch(e) {
     console.warn('Auth failed, running offline:', e);
     setSyncDot('offline');
+  }
+}
+
+function updateAuthUI() {
+  var btn = document.getElementById('btn-auth');
+  if (!btn) return;
+  if (currentUser && currentUser.email) {
+    var short = currentUser.email.split('@')[0];
+    if (short.length > 14) short = short.slice(0, 14) + '…';
+    btn.textContent = '✓ ' + short;
+    btn.classList.add('signed-in');
+  } else {
+    btn.textContent = 'Войти';
+    btn.classList.remove('signed-in');
+  }
+}
+
+function openAuthModal() {
+  var modal = document.getElementById('auth-modal');
+  var card = modal.querySelector('.modal-card');
+  if (currentUser && currentUser.email) {
+    card.innerHTML =
+      '<button class="modal-close" id="btn-close-auth">✕</button>' +
+      '<div class="modal-title">Мой аккаунт</div>' +
+      '<div class="modal-desc">Ты вошёл как <strong>' + esc(currentUser.email) + '</strong>.<br>Слова синхронизируются на всех устройствах.</div>' +
+      '<button id="btn-signout" class="btn-secondary" style="margin-bottom:0;">Выйти из аккаунта</button>';
+    document.getElementById('btn-close-auth').addEventListener('click', closeAuthModal);
+    document.getElementById('btn-signout').addEventListener('click', async function() {
+      await sb.auth.signOut();
+      await sb.auth.signInAnonymously();
+      closeAuthModal();
+      showToast('Вышел из аккаунта');
+    });
+  } else {
+    card.innerHTML =
+      '<button class="modal-close" id="btn-close-auth">✕</button>' +
+      '<div class="modal-title">Сохранить словарь</div>' +
+      '<div class="modal-desc">Введи email — пришлём ссылку для входа. Слова будут доступны с любого устройства.</div>' +
+      '<input type="email" id="auth-email-input" class="source-input" placeholder="твой@email.com" style="margin-bottom:12px;">' +
+      '<button id="auth-send-btn" class="btn-primary">Получить ссылку →</button>' +
+      '<div id="auth-status" class="auth-status"></div>';
+    document.getElementById('btn-close-auth').addEventListener('click', closeAuthModal);
+    document.getElementById('auth-send-btn').addEventListener('click', handleAuthSend);
+    document.getElementById('auth-email-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') handleAuthSend(); });
+    setTimeout(function() { var inp = document.getElementById('auth-email-input'); if (inp) inp.focus(); }, 50);
+  }
+  modal.classList.add('open');
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.remove('open');
+}
+
+async function handleAuthSend() {
+  var emailEl = document.getElementById('auth-email-input');
+  var statusEl = document.getElementById('auth-status');
+  var sendBtn = document.getElementById('auth-send-btn');
+  var email = emailEl ? emailEl.value.trim() : '';
+  if (!email || !email.includes('@')) {
+    if (statusEl) statusEl.textContent = 'Введи корректный email';
+    return;
+  }
+  if (statusEl) statusEl.textContent = 'Отправляем ссылку…';
+  if (sendBtn) sendBtn.disabled = true;
+  try {
+    var { error } = await sb.auth.signInWithOtp({
+      email: email,
+      options: { emailRedirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) throw error;
+    if (statusEl) statusEl.textContent = '✓ Проверь почту — ссылка уже там';
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Отправить ещё раз'; }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = 'Ошибка: ' + (e.message || 'Попробуй ещё раз');
+    if (sendBtn) sendBtn.disabled = false;
   }
 }
 
@@ -1407,6 +1605,8 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('btn-back-stats').addEventListener('click', function() { showScreen('upload-screen'); });
   document.getElementById('btn-open-stats').addEventListener('click', openStats);
   document.getElementById('btn-done-stats').addEventListener('click', openStats);
+  document.getElementById('btn-auth').addEventListener('click', openAuthModal);
+  document.getElementById('auth-modal').addEventListener('click', function(e) { if (e.target === this) closeAuthModal(); });
 
   document.getElementById('retry-btn').addEventListener('click', function() {
     cards = shuffle(forgottenCards.slice());
