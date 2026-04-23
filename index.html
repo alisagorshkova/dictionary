@@ -972,7 +972,7 @@
       </div>
     </div>
 
-    <div class="flip-hint">Нажми на карточку, чтобы увидеть перевод</div>
+    <div class="flip-hint" id="flip-hint">Нажми на карточку, чтобы увидеть перевод</div>
 
     <div class="action-row">
       <button class="btn-action btn-forgot" id="btn-forgot">← Не помню</button>
@@ -1420,12 +1420,16 @@ function showCard() {
   fc.style.opacity = '1';
   document.getElementById('hint-left').style.opacity = '0';
   document.getElementById('hint-right').style.opacity = '0';
+  document.getElementById('flip-hint').textContent = 'Нажми на карточку, чтобы увидеть перевод';
 }
 
 function flipCard() {
   if (isDragging) return;
   isFlipped = !isFlipped;
   document.getElementById('flashcard').classList.toggle('flipped', isFlipped);
+  document.getElementById('flip-hint').textContent = isFlipped
+    ? 'Нажми ещё раз, чтобы вернуться к слову'
+    : 'Нажми на карточку, чтобы увидеть перевод';
 }
 
 function animateSwipe(direction, callback) {
@@ -1668,9 +1672,77 @@ async function translateWord(word, from, to) {
   return null;
 }
 
+function extractFromText(text) {
+  var STOP = new Set([
+    'a','an','the','is','are','was','were','be','been','being','have','has','had',
+    'do','does','did','will','would','could','should','may','might','can','shall','must',
+    'to','of','in','on','at','for','with','by','from','up','out','about','into',
+    'through','during','after','before','between','against','along','among','around',
+    'behind','below','beneath','beside','beyond','down','near','off','onto','toward',
+    'under','within','without','than','more','most','much','many','other','some',
+    'such','no','not','only','own','same','so','also','as','if','or','but','and',
+    'nor','yet','although','because','since','unless','until','while','though',
+    'i','you','he','she','we','they','me','him','her','us','them','my','your',
+    'his','its','our','their','what','which','who','whom','whose','when','where',
+    'how','why','this','that','these','those','it','there','here','just','very',
+    'too','quite','already','still','yet','then','now','always','never','often',
+    'again','ever','once','first','last','next','all','both','each','few','any',
+    'every','either','neither','one','two','three','got','get','go','come','make',
+    'take','give','see','look','say','know','think','feel','want','use','find',
+    'tell','ask','seem','call','keep','let','put','mean','become','leave','show',
+    'hear','play','run','move','live','believe','hold','bring','write','set',
+    'stop','follow','watch','buy','wait','die','send','build','stay','fall'
+  ]);
+
+  function cln(w) { return w.replace(/[^a-zA-ZА-Яа-яёЁ'\-]/g, '').toLowerCase(); }
+  function isContent(w) { var c = cln(w); return c.length >= 3 && !STOP.has(c); }
+
+  var items = [];
+  var seen = new Set();
+  function add(phrase) {
+    var key = phrase.toLowerCase().trim();
+    if (key.length < 2 || seen.has(key)) return;
+    seen.add(key);
+    items.push(key);
+  }
+
+  var sentences = text.replace(/\n+/g, ' ').split(/[.!?]+\s*/);
+  sentences.forEach(function(sentence) {
+    if (!sentence.trim()) return;
+    var clauses = sentence.split(/[,;—–]+/);
+    clauses.forEach(function(clause) {
+      var tokens = clause
+        .replace(/["""''()\[\]{}\*#@&]/g, ' ')
+        .split(/\s+/)
+        .filter(function(w) { return w.length >= 2; });
+      if (!tokens.length) return;
+      var contentTokens = tokens.filter(isContent);
+      if (tokens.length <= 4 && contentTokens.length >= 1) {
+        var phrase = tokens.map(cln).filter(function(w) { return w.length >= 2; }).join(' ');
+        if (phrase) add(phrase);
+      } else {
+        contentTokens.forEach(function(w) { add(cln(w)); });
+        for (var i = 0; i < tokens.length - 1; i++) {
+          if (isContent(tokens[i]) && isContent(tokens[i + 1])) {
+            add(cln(tokens[i]) + ' ' + cln(tokens[i + 1]));
+          }
+        }
+      }
+    });
+  });
+  return items;
+}
+
 async function startAutoSession() {
   var text = document.getElementById('vocab-input').value.trim();
-  var words = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+  var lines = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+  if (!lines.length) {
+    document.getElementById('error-msg').style.display = 'block';
+    return;
+  }
+  // If any line looks like a paragraph (5+ words), extract words/phrases from the whole text
+  var isText = lines.some(function(l) { return l.split(/\s+/).length > 4; });
+  var words = isText ? extractFromText(text) : lines;
   if (!words.length) {
     document.getElementById('error-msg').style.display = 'block';
     return;
